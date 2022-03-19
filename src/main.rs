@@ -7,7 +7,7 @@ use std::thread;
 
 
 const CONNECTION_TIME: u64  = 2;
-const PORTS: &'static [u16] = &[21, 22, 1021, 1022];
+const PORTS: &'static [u16] = &[21, 1021];
 const CORES: usize = 10;
 
 fn load_work_into_queue(ip_queue: Arc<Mutex<Vec<Ipv4AddrRange>>>) -> () {
@@ -42,8 +42,8 @@ fn proc_range(input: Arc<Mutex<Vec<Ipv4AddrRange>>>, output: Arc<Mutex<Vec<(Ipv4
 
 fn format_record(record: (Ipv4Addr, u16), out: &mut [String; 2]) -> () {
     let octets = record.0.octets();
-    out[0] = format!("{:03}.{:03}.{:03}.{:03}", octets[0], octets[1], octets[2], octets[3]);
-    out[1] = format!("{:06}", record.1);
+    out[0] = format!("{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3]);
+    out[1] = format!("{}", record.1);
 }
 
 fn main() {

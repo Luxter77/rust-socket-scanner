@@ -7,7 +7,7 @@ use std::thread;
 
 
 const CONNECTION_TIME: u64  = 2;
-const PORTS: &'static [u16] = &[21, 22, 80, 443, 1021, 1022];
+const PORTS: &'static [u16] = &[21, 22, 1021, 1022];
 const CORES: usize = 10;
 
 fn load_work_into_queue(ip_queue: Arc<Mutex<Vec<Ipv4AddrRange>>>) -> () {

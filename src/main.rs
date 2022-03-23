@@ -8,7 +8,7 @@ use std::thread;
 
 const CONNECTION_TIME: u64  = 2;
 const PORTS: &'static [u16] = &[21];
-const CORES: usize = 20;
+const CORES: usize = 50;
 const QUESTIONMARK: &'static str = "?";
 const NET_BUFFER: usize = 4096;
 

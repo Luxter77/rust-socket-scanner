@@ -8,7 +8,7 @@ use std::thread;
 
 const CONNECTION_TIME: u64  = 2;
 const PORTS: &'static [u16] = &[21];
-const CORES: usize = 50;
+const CORES: usize = 100;
 const QUESTIONMARK: &'static str = "?";
 const NET_BUFFER: usize = 4096;
 
@@ -38,7 +38,7 @@ fn query_socket(ip: Ipv4Addr, port: u16, r: &mut [u8]) -> bool {
     };
 }
 
-fn proc_range(input: Arc<Mutex<Vec<Ipv4AddrRange>>>, output: Arc<Mutex<Vec<(Ipv4Addr, u16, [u8; NET_BUFFER])>>>) -> () {
+fn proc_range(input: Arc<Mutex<Vec<Ipv4AddrRange>>>, output: Arc<Mutex<Vec<(Ipv4Addr, u16, [u8; NET_BUFFER])>>>, counter: Arc<Mutex<[u64; 2]>>) -> () {
     loop {
         let range = input.lock().unwrap().pop();
         if range.is_none() { break };
@@ -48,7 +48,15 @@ fn proc_range(input: Arc<Mutex<Vec<Ipv4AddrRange>>>, output: Arc<Mutex<Vec<(Ipv4
                 let mut r: [u8; NET_BUFFER] = [0; NET_BUFFER];
                 if query_socket(ip.clone(), port.clone(), &mut r) {
                     output.lock().unwrap().push((ip.clone(), port.clone(), r)); // println!("HIT!") 
-                } // else    { println!("boo") }
+                    {
+                        let mut c = counter.lock().unwrap();
+                        c[0] = c[0] + 1;
+                        c[1] = c[1] + 1;
+                    };
+                } else {
+                    let mut c = counter.lock().unwrap();
+                    c[0] = c[0] + 1;
+                };
             }
         }
     }
@@ -69,21 +77,27 @@ fn format_record(record: (Ipv4Addr, u16, [u8; NET_BUFFER]), out: &mut [String; 3
 fn main() {
     let mut writer = csv::Writer::from_path("./extra/scannout.csv").expect("Can't write out file.");
     
-    let write_queue:    Arc<Mutex<Vec<(Ipv4Addr, u16, [u8; NET_BUFFER])>>>    = Arc::new(Mutex::new(Vec::new()));
-    let ip_queue:       Arc<Mutex<Vec<Ipv4AddrRange>>>      = Arc::new(Mutex::new(Vec::new()));
-    
+    let write_queue:    Arc<Mutex<Vec<(Ipv4Addr, u16, [u8; NET_BUFFER])>>>  = Arc::new(Mutex::new(Vec::new()));
+    let ip_queue:       Arc<Mutex<Vec<Ipv4AddrRange>>>                      = Arc::new(Mutex::new(Vec::new()));
+    let counter:        Arc<Mutex<[u64; 2]>>                                = Arc::new(Mutex::new([0, 0]));
+
     load_work_into_queue(ip_queue.clone());
 
     for _ in 0..(CORES*4) {
-        let (_i, _o) = (ip_queue.clone(), write_queue.clone());
-        thread::spawn(move || { proc_range(_i, _o) });
+        let (_i, _o, _c) = (ip_queue.clone(), write_queue.clone(), counter.clone());
+        thread::spawn(move || { proc_range(_i, _o, _c) });
     }
 
+    let mut w_batch: bool  = true;
+    let mut l_count: usize = 0;
+    let mut l_len:   usize;
+
     loop {
-        if write_queue.lock().unwrap().is_empty() {
+	if write_queue.lock().unwrap().is_empty() {
             if ip_queue.lock().unwrap().is_empty() {
                 break;
             } else {
+                w_batch = true;
                 sleep(Duration::new(10*CONNECTION_TIME, 0));
             }
         } else {
@@ -92,7 +106,17 @@ fn main() {
             format_record(last.clone(),  &mut formatted_record);
             writer.write_record(formatted_record.clone()).unwrap();
             writer.flush().unwrap();
-            println!("{:?}", formatted_record);
+            let c_display: String;
+            if w_batch {
+                l_len = write_queue.lock().unwrap().len();
+                let c = counter.lock().unwrap().clone();
+	            c_display = format!("[c:{}, f:{}, b:{}] ", c[0], c[1], l_len);
+                l_count = c_display.chars().count();
+                w_batch = false;
+            } else {
+                c_display = " ".repeat(l_count);
+	    }
+            println!("{}{:?}", c_display, formatted_record);
         }
     }
 }

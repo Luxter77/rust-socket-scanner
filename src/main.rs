@@ -108,9 +108,9 @@ fn main() {
             writer.flush().unwrap();
             let c_display: String;
             if w_batch {
-                l_len = write_queue.lock().unwrap().len();
+                l_len = write_queue.lock().unwrap().len() + 1;
                 let c = counter.lock().unwrap().clone();
-	            c_display = format!("[c:{}, f:{}, b:{}] ", c[0], c[1], l_len);
+                c_display = format!("[c:{}, f:{}, b:{}] ", c[0], c[1], l_len);
                 l_count = c_display.chars().count();
                 w_batch = false;
             } else {

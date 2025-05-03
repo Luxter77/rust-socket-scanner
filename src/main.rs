@@ -1,3 +1,15 @@
+// You configure things here
+
+const CONNECTION_TIME:  u64             = 2;
+const PORTS:            &'static [u16]  = &[445];
+const CORES:            usize           = 8;
+const QUESTIONMARK:     &'static str    = "?";
+const NET_BUFFER:       usize           = 4096;
+const BIN_OUTPUT:       bool            = false;
+const DEBUG_FLAG:       bool            = cfg!(debug_assertions);
+
+// Code runs here
+
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream};
 use std::sync::{Mutex, Arc};
 use ipnet::Ipv4AddrRange;
@@ -6,16 +18,7 @@ use std::thread::sleep;
 use base64::encode;
 use std::thread;
 
-const CONNECTION_TIME: u64  = 2;
-const PORTS: &'static [u16] = &[21];
-const CORES: usize = 10;
-const QUESTIONMARK: &'static str = "?";
-const NET_BUFFER: usize = 4096;
-const BIN_OUTPUT: bool = true;
-const DEBUG_FLAG: bool = false;
-
 type ScanResoult = (Ipv4Addr, u16, [u8; NET_BUFFER]);
-
 
 fn load_work_into_queue(ip_queue: Arc<Mutex<Vec<Ipv4AddrRange>>>) -> () {
     
@@ -49,9 +52,10 @@ fn proc_range(input: Arc<Mutex<Vec<Ipv4AddrRange>>>, output: Arc<Mutex<Vec<ScanR
         if range.is_none() { break };
         for ip in range.unwrap() {
             for port in PORTS {
-                if DEBUG_FLAG { print!("{:?}:{:?}... ", ip.clone(), port.clone()) };
+                if DEBUG_FLAG { println!("{:?}:{:?}... ", ip.clone(), port.clone()) };
                 let mut r: [u8; NET_BUFFER] = [0; NET_BUFFER];
                 if query_socket(ip.clone(), port.clone(), &mut r) {
+                    if DEBUG_FLAG { println!("{:?}:{:?} CONN OK!", ip.clone(), port.clone()) };
                     output.lock().unwrap().push((ip.clone(), port.clone(), r)); // println!("HIT!") 
                     {
                         let mut c = counter.lock().unwrap();
